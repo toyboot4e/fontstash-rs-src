@@ -50,14 +50,12 @@ enum FONSalign {
 };
 
 enum FONSerrorCode {
-	// Font atlas is full.
-	FONS_ATLAS_FULL = 1,
 	// Scratch memory used to render glyphs is full, requested size reported in 'val', you may need to bump up FONS_SCRATCH_BUF_SIZE.
-	FONS_SCRATCH_FULL = 2,
+	FONS_SCRATCH_FULL = 1,
 	// Calls to fonsPushState has created too large stack, if you need deep state stack bump up FONS_MAX_STATES.
-	FONS_STATES_OVERFLOW = 3,
+	FONS_STATES_OVERFLOW = 2,
 	// Trying to pop too many states fonsPopState().
-	FONS_STATES_UNDERFLOW = 4,
+	FONS_STATES_UNDERFLOW = 3,
 };
 
 struct FONSparams {
@@ -65,7 +63,11 @@ struct FONSparams {
 	unsigned char flags;
 	void* userPtr;
 	int (*renderCreate)(void* uptr, int width, int height);
+	// used to run `fonsExpandAtlas` and `fonsResizeAtlas`
 	int (*renderResize)(void* uptr, int width, int height);
+	// Called while the font atlas is too small to store glyphs. Maybe double the texure using `fonsExpandAtlas`.
+	// Return 1 to continue, 0 to fail
+	int (*renderExpand)(void* uptr);
 	// return 1 if the texture was successfully updated else 0
 	int (*renderUpdate)(void* uptr, int* rect, const unsigned char* data);
 	void (*renderDelete)(void* uptr);
@@ -1057,12 +1059,17 @@ static FONSglyph* fons__getGlyph(FONScontext* stash, FONSfont* font, unsigned in
 
 	// Find free spot for the rect in the atlas
 	added = fons__atlasAddRect(stash->atlas, gw, gh, &gx, &gy);
-	if (added == 0 && stash->handleError != NULL) {
-		// Atlas is full, let the user to resize the atlas (or not), and try again.
-		stash->handleError(stash->errorUptr, FONS_ATLAS_FULL, 0);
-		added = fons__atlasAddRect(stash->atlas, gw, gh, &gx, &gy);
+	if (added == 0 && stash->params.renderExpand != NULL) {
+		// atlas is full so expand texture
+		while (added == 0) {
+			if (stash->params.renderExpand(stash->params.userPtr)) {
+				added = fons__atlasAddRect(stash->atlas, gw, gh, &gx, &gy);
+			} else {
+				// fail
+				return NULL;
+			}
+		}
 	}
-	if (added == 0) return NULL;
 
 	// Init glyph.
 	glyph = fons__allocGlyph(font);
