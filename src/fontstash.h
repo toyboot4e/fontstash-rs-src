@@ -1248,13 +1248,15 @@ static void fons__flush(FONScontext* stash)
 {
 	// Flush texture
 	if (stash->dirtyRect[0] < stash->dirtyRect[2] && stash->dirtyRect[1] < stash->dirtyRect[3]) {
-		if (stash->params.renderUpdate != NULL)
-			stash->params.renderUpdate(stash->params.userPtr, stash->dirtyRect, stash->texData);
-		// Reset dirty rect
-		stash->dirtyRect[0] = stash->params.width;
-		stash->dirtyRect[1] = stash->params.height;
-		stash->dirtyRect[2] = 0;
-		stash->dirtyRect[3] = 0;
+		if (stash->params.renderUpdate != NULL) {
+			if (stash->params.renderUpdate(stash->params.userPtr, stash->dirtyRect, stash->texData)) {
+				// Reset dirty rect
+				stash->dirtyRect[0] = stash->params.width;
+				stash->dirtyRect[1] = stash->params.height;
+				stash->dirtyRect[2] = 0;
+				stash->dirtyRect[3] = 0;
+			}
+		}
 	}
 
 	// Flush triangles
@@ -1416,8 +1418,10 @@ FONS_DEF int fonsTextIterNext(FONScontext* stash, FONStextIter* iter, FONSquad* 
 	const char* str = iter->next;
 	iter->str = iter->next;
 
-	if (str == iter->end)
+	if (str == iter->end) {
+		fons__flush(stash);
 		return 0;
+	}
 
 	for (; str != iter->end; str++) {
 		if (fons__decutf8(&iter->utf8state, &iter->codepoint, *(const unsigned char*)str))
