@@ -66,7 +66,8 @@ struct FONSparams {
 	void* userPtr;
 	int (*renderCreate)(void* uptr, int width, int height);
 	int (*renderResize)(void* uptr, int width, int height);
-	void (*renderUpdate)(void* uptr, int* rect, const unsigned char* data);
+	// return 1 if the texture was successfully updated else 0
+	int (*renderUpdate)(void* uptr, int* rect, const unsigned char* data);
 	void (*renderDraw)(void* uptr, const float* verts, const float* tcoords, const unsigned int* colors, int nverts);
 	void (*renderDelete)(void* uptr);
 };
