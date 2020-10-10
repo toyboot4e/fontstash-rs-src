@@ -68,7 +68,6 @@ struct FONSparams {
 	int (*renderResize)(void* uptr, int width, int height);
 	// return 1 if the texture was successfully updated else 0
 	int (*renderUpdate)(void* uptr, int* rect, const unsigned char* data);
-	void (*renderDraw)(void* uptr, const float* verts, const float* tcoords, const unsigned int* colors, int nverts);
 	void (*renderDelete)(void* uptr);
 };
 typedef struct FONSparams FONSparams;
@@ -331,9 +330,6 @@ static int fons__tt_getGlyphKernAdvance(FONSttFontImpl *font, int glyph1, int gl
 #ifndef FONS_INIT_ATLAS_NODES
 #	define FONS_INIT_ATLAS_NODES 256
 #endif
-#ifndef FONS_VERTEX_COUNT
-#	define FONS_VERTEX_COUNT 1024
-#endif
 #ifndef FONS_MAX_STATES
 #	define FONS_MAX_STATES 20
 #endif
@@ -427,10 +423,6 @@ struct FONScontext
 	FONSatlas* atlas;
 	int cfonts;
 	int nfonts;
-	float verts[FONS_VERTEX_COUNT*2];
-	float tcoords[FONS_VERTEX_COUNT*2];
-	unsigned int colors[FONS_VERTEX_COUNT];
-	int nverts;
 	unsigned char* scratch;
 	int nscratch;
 	FONSstate states[FONS_MAX_STATES];
@@ -1197,23 +1189,6 @@ static void fons__flush(FONScontext* stash)
 			}
 		}
 	}
-
-	// Flush triangles
-	if (stash->nverts > 0) {
-		if (stash->params.renderDraw != NULL)
-			stash->params.renderDraw(stash->params.userPtr, stash->verts, stash->tcoords, stash->colors, stash->nverts);
-		stash->nverts = 0;
-	}
-}
-
-static __inline void fons__vertex(FONScontext* stash, float x, float y, float s, float t, unsigned int c)
-{
-	stash->verts[stash->nverts*2+0] = x;
-	stash->verts[stash->nverts*2+1] = y;
-	stash->tcoords[stash->nverts*2+0] = s;
-	stash->tcoords[stash->nverts*2+1] = t;
-	stash->colors[stash->nverts] = c;
-	stash->nverts++;
 }
 
 static float fons__getVertAlign(FONScontext* stash, FONSfont* font, int align, short isize)
