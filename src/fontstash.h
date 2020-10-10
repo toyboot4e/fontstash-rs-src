@@ -1062,7 +1062,11 @@ static FONSglyph* fons__getGlyph(FONScontext* stash, FONSfont* font, unsigned in
 		stash->handleError(stash->errorUptr, FONS_ATLAS_FULL, 0);
 		added = fons__atlasAddRect(stash->atlas, gw, gh, &gx, &gy);
 	}
-	if (added == 0) return NULL;
+	if (added == 0) {
+		// double our texture size
+		fonsExpandAtlas(stash, stash->params.width * 2, stash->params.height * 2);
+		return NULL;
+	}
 
 	// Init glyph.
 	glyph = fons__allocGlyph(font);
